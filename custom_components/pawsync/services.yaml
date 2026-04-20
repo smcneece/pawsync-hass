@@ -1,0 +1,21 @@
+feed:
+  description: Trigger a manual feeding for a Pawsync device.
+  fields:
+    entity_id:
+      description: The entity ID of the Pawsync feeder sensor.
+      example: "sensor.my_cat_feeder"
+      required: true
+      selector:
+        entity:
+          integration: pawsync
+    amount:
+      description: Feeding amount in internal units (default 12). Adjust based on your feeder's calibration.
+      example: 12
+      required: false
+      default: 12
+      selector:
+        number:
+          min: 1
+          max: 50
+          step: 1
+          mode: box

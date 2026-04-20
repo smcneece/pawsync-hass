@@ -1,0 +1,37 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to Pawsync",
+        "data": {
+          "username": "Email address",
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid email or password",
+      "unknown": "Unexpected error — check the HA logs"
+    },
+    "abort": {
+      "already_configured": "This Pawsync account is already configured"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Pawsync options",
+        "data": {
+          "username": "Email address",
+          "password": "Password",
+          "unit_system": "Units",
+          "meal_size": "Default meal size (API portions)",
+          "update_interval": "Polling interval (minutes)"
+        },
+        "data_description": {
+          "password": "Leave unchanged to keep your current password"
+        }
+      }
+    }
+  }
+}
