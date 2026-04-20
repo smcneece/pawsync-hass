@@ -1,6 +1,6 @@
 # Pawsync HA Integration — Changes
 
-## v0.2.0 (0.1.1 — 2026-04-19)
+## v0.2.0 (unreleased)
 
 ### Bug Fixes
 - Sensor value was frozen at startup value and never updated
