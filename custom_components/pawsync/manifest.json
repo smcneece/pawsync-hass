@@ -3,7 +3,7 @@
     "name": "Pawsync",
     "codeowners": [],
     "dependencies": [],
-    "documentation": "",
+    "documentation": "https://github.com/smcneece/pawsync-hass",
     "iot_class": "cloud_polling",
     "requirements": [],
     "version": "0.1.1",
