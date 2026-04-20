@@ -3,6 +3,7 @@
 Monitor and control your Pawsync smart pet feeder from Home Assistant. View food levels, battery, schedule info, and trigger manual feedings — all from your dashboard or automations.
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
+[![HACS Action](https://github.com/smcneece/pawsync-hass/actions/workflows/validate.yaml/badge.svg)](https://github.com/smcneece/pawsync-hass/actions/workflows/validate.yaml)
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/smcneece/pawsync-hass)](https://github.com/smcneece/pawsync-hass/releases)
 [![GitHub](https://img.shields.io/github/license/smcneece/pawsync-hass)](LICENSE)
 
