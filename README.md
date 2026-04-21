@@ -9,6 +9,8 @@ Monitor and control your Pawsync smart pet feeder from Home Assistant. View live
 
 > This integration is not affiliated with or endorsed by Pawsync.
 
+> **Tip:** Entity and device names come directly from the Pawsync app. Before installing, name your feeder(s) and pet(s) in the app the way you want them to appear in Home Assistant — for example, naming your feeder "Finn's Feeder" and your pet "Finn" will produce clean entity names like `sensor.finn_s_feeder_food_in_bowl` and `sensor.finn_weight`.
+
 ---
 
 ## Installation
@@ -38,8 +40,6 @@ Monitor and control your Pawsync smart pet feeder from Home Assistant. View live
 ## Configuration
 
 Enter your Pawsync account email and password. Credentials are validated against the Pawsync API before the entry is created.
-
-> **Tip:** Entity and device names come directly from the Pawsync app. Before adding the integration, name your feeder(s) and pet(s) in the app the way you want them to appear in Home Assistant — for example, naming your feeder "Finn's Feeder" and your pet "Finn" will produce clean entity names like `sensor.finn_s_feeder_food_in_bowl` and `sensor.finn_weight`.
 
 ### Options (gear icon on the integration)
 
