@@ -1,6 +1,17 @@
 # Pawsync HA Integration — Changes
 
-## v0.3.0 (0.2.1 — 2026-04-20)
+## v0.3.1 (0.3.1 — 2026-04-20)
+
+### Bug Fixes
+- **Auth token expiry** — button presses (Extra Meal, etc.) and switch commands silently failed when the Pawsync API token expired mid-session. The integration now automatically re-authenticates and retries, so commands work without requiring an HA restart. This was the root cause of Alexa routines appearing to fire (last triggered timestamp updated) but no food being dispensed.
+
+### Documentation
+- Alexa voice control instructions updated — expose the Extra Meal button directly to Alexa instead of going through a script; it appears under Smart Home scenes in the Alexa app
+- Added tip to name feeders and pets in the Pawsync app before adding the integration for cleaner entity names
+
+---
+
+## v0.3.0
 
 ### Bug Fixes
 - Sensor value was frozen at startup value and never updated
@@ -38,7 +49,6 @@
 
 ### Planned / To-Do
 - **Feeding schedule** — `getFeedingPlanList` / `getFeedingPlanDetail` already sniffed; surface feeding plan times as sensors or calendar events
-- **Test Alexa "Feed Finn" voice routine** — requires production HA with Nabu Casa
 
 ### Credits
 - Original: [@jasonmeisel](https://github.com/jasonmeisel)

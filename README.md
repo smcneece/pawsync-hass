@@ -21,7 +21,7 @@ Monitor and control your Pawsync smart pet feeder from Home Assistant. View live
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=smcneece&repository=pawsync-hass&category=integration)
 
-2. Click **Add**, then **Download** the integration.
+2. Click **Add**, then **Download** button in bottom right corner the integration.
 3. Restart Home Assistant when prompted.
 4. Click the button below to start setup:
 
@@ -38,6 +38,8 @@ Monitor and control your Pawsync smart pet feeder from Home Assistant. View live
 ## Configuration
 
 Enter your Pawsync account email and password. Credentials are validated against the Pawsync API before the entry is created.
+
+> **Tip:** Entity and device names come directly from the Pawsync app. Before adding the integration, name your feeder(s) and pet(s) in the app the way you want them to appear in Home Assistant — for example, naming your feeder "Finn's Feeder" and your pet "Finn" will produce clean entity names like `sensor.finn_s_feeder_food_in_bowl` and `sensor.finn_weight`.
 
 ### Options (gear icon on the integration)
 
@@ -229,21 +231,13 @@ data:
 
 ### Alexa / Voice Control
 
-**Step 1** — Create a script in Home Assistant:
+**Step 1** — Expose the Extra Meal button to Alexa:
 
-```yaml
-# In your scripts.yaml
-feed_finn:
-  alias: "Feed Finn"
-  sequence:
-    - action: button.press
-      target:
-        entity_id: button.smart_pet_feeder_extra_meal
-```
+In Home Assistant, go to **Settings → Voice Assistants → Amazon Alexa** and expose the `Extra Meal` button for your feeder. Then open the Alexa app and run a device discovery (or say *"Alexa, discover devices"*).
 
-**Step 2** — In the Alexa app, create a Routine:
-- Trigger: *"When I say: Feed Finn"*
-- Action: Smart Home → Run Scene → **Feed Finn**
+**Step 2** — Create a Routine in the Alexa app:
+- Trigger: *"When I say: Feed Finn"* (or whatever phrase you want)
+- Action: **Smart Home → Control →** select your feeder's **Extra Meal** button (it appears under Scenes)
 
 Then just say: **"Alexa, Feed Finn"**
 
@@ -252,7 +246,7 @@ Then just say: **"Alexa, Feed Finn"**
 ## Credits
 
 - **Original integration**: [@jasonmeisel](https://github.com/jasonmeisel)
-- **v0.2.0 enhancements**: [@smcneece](https://github.com/smcneece) — bug fixes, expanded sensors, switches, pet log & profile sensors, live bowl weight, options flow, unit conversion, HACS support
+- **Major enhancements**: [@smcneece](https://github.com/smcneece) — bug fixes, expanded sensors, switches, pet log & profile sensors, live bowl weight, options flow, unit conversion, HACS support
 - **Session stability fix**: [@tomsalden](https://github.com/tomsalden) (PR #2)
 - **Sensor expansion ideas**: [@asssaf](https://github.com/asssaf) (PR #1)
 

@@ -42,7 +42,7 @@ from homeassistant.helpers.update_coordinator import (
 )
 
 from . import pawsync
-from .const import CONF_MEAL_SIZE, DEFAULT_MEAL_SIZE, DEFAULT_UPDATE_INTERVAL, DOMAIN, PAWSYNC_COORDINATOR, PLATFORMS
+from .const import CONF_MEAL_SIZE, DEFAULT_MEAL_SIZE, DEFAULT_UPDATE_INTERVAL, DOMAIN, PAWSYNC_COORDINATOR, PLATFORMS, TOKEN_INVALID_CODE
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +109,16 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
         response = await device.requestFeed(session, amount)
         resp_json = await response.json()
+        if resp_json.get("code") == TOKEN_INVALID_CODE:
+            logger.warning("Feed service: token expired, re-authenticating")
+            re_login = next(
+                (v["re_login"] for v in hass.data.get(DOMAIN, {}).values() if isinstance(v, dict) and "re_login" in v),
+                None,
+            )
+            if re_login:
+                await re_login()
+            response = await device.requestFeed(session, amount)
+            resp_json = await response.json()
         if resp_json.get("code") != 0:
             logger.error("Feed failed for device %s: %s", device_id, resp_json)
 
@@ -181,10 +191,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     await coordinator.async_config_entry_first_refresh()
 
+    async def re_login():
+        await pawsync.login(session, username, password)
+
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = {
         PAWSYNC_COORDINATOR: coordinator,
         "session": session,
+        "re_login": re_login,
     }
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)

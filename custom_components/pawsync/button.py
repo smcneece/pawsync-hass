@@ -20,7 +20,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import pawsync
-from .const import CONF_MEAL_SIZE, DEFAULT_MEAL_SIZE, DOMAIN, PAWSYNC_COORDINATOR
+from .const import CONF_MEAL_SIZE, DEFAULT_MEAL_SIZE, DOMAIN, PAWSYNC_COORDINATOR, TOKEN_INVALID_CODE
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -139,6 +139,13 @@ class PawsyncButton(CoordinatorEntity, ButtonEntity):
             return
         response = await self.entity_description.press_fn(device, self._session, self.coordinator)
         resp_json = await response.json()
+        if resp_json.get("code") == TOKEN_INVALID_CODE:
+            _LOGGER.warning("%s: token expired, re-authenticating", self.entity_description.key)
+            re_login = self.hass.data[DOMAIN].get(self.coordinator.config_entry.entry_id, {}).get("re_login")
+            if re_login:
+                await re_login()
+            response = await self.entity_description.press_fn(device, self._session, self.coordinator)
+            resp_json = await response.json()
         if resp_json.get("code") != 0:
             _LOGGER.error("%s failed for %s: %s", self.entity_description.key, self._device_id, resp_json)
         else:

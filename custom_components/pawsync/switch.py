@@ -27,7 +27,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import pawsync
-from .const import DOMAIN, PAWSYNC_COORDINATOR
+from .const import DOMAIN, PAWSYNC_COORDINATOR, TOKEN_INVALID_CODE
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -146,6 +146,13 @@ class PawsyncDeviceSwitch(CoordinatorEntity, SwitchEntity):
         method, data = self.entity_description.cmd_fn(on, self.device)
         response = await self.device.setSwitch(self._session, method, data)
         resp_json = await response.json()
+        if resp_json.get("code") == TOKEN_INVALID_CODE:
+            _LOGGER.warning("Switch %s: token expired, re-authenticating", method)
+            re_login = self.hass.data[DOMAIN].get(self.coordinator.config_entry.entry_id, {}).get("re_login")
+            if re_login:
+                await re_login()
+            response = await self.device.setSwitch(self._session, method, data)
+            resp_json = await response.json()
         if resp_json.get("code") != 0:
             _LOGGER.error("Switch %s=%s failed for %s: %s", method, on, self.device.deviceId, resp_json)
             return

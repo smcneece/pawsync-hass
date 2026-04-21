@@ -14,3 +14,5 @@ UNIT_METRIC = "metric"
 
 DEFAULT_MEAL_SIZE = 11
 DEFAULT_UPDATE_INTERVAL = 15  # minutes
+
+TOKEN_INVALID_CODE = -11008800  # Pawsync API code when auth token has expired
