@@ -128,10 +128,11 @@ class PawsyncOptionsFlowHandler(config_entries.OptionsFlow):
                 ),
                 vol.Required(CONF_MEAL_SIZE, default=current_meal_size): selector.NumberSelector(
                     selector.NumberSelectorConfig(
-                        min=1,
-                        max=50,
-                        step=1,
-                        mode=selector.NumberSelectorMode.BOX,
+                        min=11,
+                        max=110,
+                        step=11,
+                        unit_of_measurement="g",
+                        mode=selector.NumberSelectorMode.SLIDER,
                     )
                 ),
                 vol.Required("update_interval", default=current_interval): selector.NumberSelector(

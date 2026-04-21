@@ -25,7 +25,7 @@
           "username": "Email address",
           "password": "Password",
           "unit_system": "Units",
-          "meal_size": "Default meal size (API portions)",
+          "meal_size": "Extra meal size (11g = 1 portion ≈ 0.4 oz)",
           "update_interval": "Polling interval (minutes)"
         },
         "data_description": {

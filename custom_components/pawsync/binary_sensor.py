@@ -21,6 +21,8 @@ from .const import DOMAIN, PAWSYNC_COORDINATOR
 
 _LOGGER = logging.getLogger(__name__)
 
+_LOGGER = logging.getLogger(__name__)
+
 
 @dataclass(frozen=True)
 class PawsyncBinarySensorEntityDescription(BinarySensorEntityDescription):
@@ -35,28 +37,10 @@ BINARY_SENSOR_TYPES: tuple[PawsyncBinarySensorEntityDescription, ...] = (
         value_fn=lambda d: d.deviceProp.get("powerAdapter") == 1,
     ),
     PawsyncBinarySensorEntityDescription(
-        key="intelligent_feeding",
-        name="Intelligent feeding",
-        icon="mdi:robot-pet",
-        value_fn=lambda d: d.deviceProp.get("intelligentFeedingSwitch") == 1,
-    ),
-    PawsyncBinarySensorEntityDescription(
-        key="slow_feed",
-        name="Slow feed",
-        icon="mdi:speedometer-slow",
-        value_fn=lambda d: d.deviceProp.get("slowFeedSwitch") == 1,
-    ),
-    PawsyncBinarySensorEntityDescription(
-        key="accurate_feeding",
-        name="Accurate feeding",
-        icon="mdi:target",
-        value_fn=lambda d: d.deviceProp.get("accurateFeeding") == 1,
-    ),
-    PawsyncBinarySensorEntityDescription(
-        key="sleep_mode",
-        name="Sleep mode",
-        icon="mdi:sleep",
-        value_fn=lambda d: (d.deviceProp.get("sleepMode") or {}).get("enable") == 1,
+        key="bowl_missing",
+        name="Food bowl",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        value_fn=lambda d: d.deviceProp.get("bowlConnected") != "normal" if d.deviceProp.get("bowlConnected") is not None else None,
     ),
 )
 
@@ -75,12 +59,16 @@ async def async_setup_entry(
             return
         new_entities = [
             PawsyncDeviceBinarySensor(coordinator, d, desc)
-            for d in coordinator.data
+            for d in coordinator.data["devices"]
             for desc in BINARY_SENSOR_TYPES
             if f"{d.deviceId}_{desc.key}" not in known_ids
         ]
+        for d in coordinator.data["devices"]:
+            if f"{d.deviceId}_firmware_update" not in known_ids:
+                new_entities.append(PawsyncFirmwareUpdateSensor(coordinator, d))
+                known_ids.add(f"{d.deviceId}_firmware_update")
         if new_entities:
-            known_ids.update(f"{e.device.deviceId}_{e.entity_description.key}" for e in new_entities)
+            known_ids.update(f"{e.device.deviceId}_{e.entity_description.key}" for e in new_entities if hasattr(e, 'entity_description'))
             async_add_entities(new_entities)
 
     coordinator.async_add_listener(_check_for_new)
@@ -101,7 +89,7 @@ class PawsyncDeviceBinarySensor(CoordinatorEntity, BinarySensorEntity):
 
     @callback
     def _handle_coordinator_update(self) -> None:
-        for d in self.coordinator.data or []:
+        for d in (self.coordinator.data or {}).get("devices", []):
             if d.deviceId == self.device.deviceId:
                 self.device = d
                 break
@@ -126,3 +114,58 @@ class PawsyncDeviceBinarySensor(CoordinatorEntity, BinarySensorEntity):
         if self.entity_description.value_fn:
             return self.entity_description.value_fn(self.device)
         return None
+
+
+class PawsyncFirmwareUpdateSensor(CoordinatorEntity, BinarySensorEntity):
+
+    _attr_device_class = BinarySensorDeviceClass.UPDATE
+    _attr_icon = "mdi:update"
+
+    def __init__(self, coordinator, device: pawsync.Device):
+        super().__init__(coordinator)
+        self.device = device
+        self._attr_unique_id = f"pawsync_{device.deviceId}_firmware_update"
+        self._attr_name = f"{device.deviceName} Firmware update"
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        for d in (self.coordinator.data or {}).get("devices", []):
+            if d.deviceId == self.device.deviceId:
+                self.device = d
+                break
+        super()._handle_coordinator_update()
+
+    @property
+    def available(self) -> bool:
+        return self.coordinator.last_update_success
+
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {(DOMAIN, self.device.deviceId)},
+            "name": self.device.deviceName,
+            "model": self.device.deviceModel,
+            "manufacturer": "Pawsync",
+            "hw_version": self.device.configModel,
+        }
+
+    @property
+    def is_on(self) -> bool | None:
+        infos = (self.coordinator.data or {}).get("firmware_updates", {}).get(self.device.deviceId, [])
+        if not infos:
+            return None
+        return any(fw.get("upgradeLevel", 0) > 0 for fw in infos)
+
+    @property
+    def extra_state_attributes(self):
+        infos = (self.coordinator.data or {}).get("firmware_updates", {}).get(self.device.deviceId, [])
+        updates = [
+            {
+                "plugin": fw["pluginName"],
+                "current": fw["currentVersion"],
+                "latest": fw["latestVersion"],
+                "notes": fw.get("releaseNotes", ""),
+            }
+            for fw in infos if fw.get("upgradeLevel", 0) > 0
+        ]
+        return {"pending_updates": updates} if updates else {}

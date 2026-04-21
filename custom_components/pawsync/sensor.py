@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any, Callable
 
 from homeassistant.components.sensor import (
@@ -38,6 +39,8 @@ def _secs_to_time(secs: int | None) -> str | None:
     return f"{h:02d}:{m:02d}"
 
 
+# ── Device property sensors ────────────────────────────────────────────────────
+
 @dataclass(frozen=True)
 class PawsyncSensorEntityDescription(SensorEntityDescription):
     value_fn: Callable[[pawsync.Device], Any] | None = None
@@ -50,12 +53,12 @@ SENSOR_TYPES: tuple[PawsyncSensorEntityDescription, ...] = (
         value_fn=lambda d: d.deviceProp.get("connectionStatus"),
     ),
     PawsyncSensorEntityDescription(
-        key="content_in_pot",
+        key="bowl_weight",
         name="Food in bowl",
         native_unit_of_measurement=UnitOfMass.GRAMS,
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:bowl-mix",
-        value_fn=lambda d: d.deviceProp.get("contentInPot"),
+        value_fn=lambda d: d.deviceProp.get("bowlWeight"),
     ),
     PawsyncSensorEntityDescription(
         key="bucket_surplus",
@@ -125,7 +128,6 @@ SENSOR_TYPES: tuple[PawsyncSensorEntityDescription, ...] = (
             None,
         ),
     ),
-    # Schedule / next meal
     PawsyncSensorEntityDescription(
         key="next_meal_time",
         name="Next meal time",
@@ -148,7 +150,6 @@ SENSOR_TYPES: tuple[PawsyncSensorEntityDescription, ...] = (
         icon="mdi:sigma",
         value_fn=lambda d: (d.deviceProp.get("scheduleInfo") or {}).get("totalMealG"),
     ),
-    # Network / misc
     PawsyncSensorEntityDescription(
         key="wifi_ssid",
         name="WiFi network",
@@ -156,8 +157,129 @@ SENSOR_TYPES: tuple[PawsyncSensorEntityDescription, ...] = (
         entity_registry_enabled_default=False,
         value_fn=lambda d: d.deviceProp.get("wifiName"),
     ),
+    PawsyncSensorEntityDescription(
+        key="desiccant_remaining",
+        name="Desiccant remaining",
+        native_unit_of_measurement=UnitOfTime.DAYS,
+        state_class=SensorStateClass.MEASUREMENT,
+        icon="mdi:air-filter",
+        value_fn=lambda d: d.deviceProp.get("desiccantRemainTime"),
+    ),
 )
 
+
+# ── Pet log sensors ────────────────────────────────────────────────────────────
+
+@dataclass(frozen=True)
+class PawsyncLogSensorEntityDescription(SensorEntityDescription):
+    log_fn: Callable[[list], Any] | None = None
+
+
+LOG_SENSOR_TYPES: tuple[PawsyncLogSensorEntityDescription, ...] = (
+    PawsyncLogSensorEntityDescription(
+        key="last_dispensed_time",
+        name="Last dispensed time",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        icon="mdi:clock-check",
+        log_fn=lambda logs: next(
+            (datetime.fromtimestamp(e["timestamp"], tz=timezone.utc)
+             for e in logs if e["logType"] in ("planFeeding", "manualFeeding")),
+            None,
+        ),
+    ),
+    PawsyncLogSensorEntityDescription(
+        key="last_dispensed_amount",
+        name="Last dispensed amount",
+        native_unit_of_measurement=UnitOfMass.GRAMS,
+        state_class=SensorStateClass.MEASUREMENT,
+        icon="mdi:shaker-outline",
+        log_fn=lambda logs: next(
+            (e["value"] for e in logs
+             if e["logType"] in ("planFeeding", "manualFeeding") and e.get("value") is not None),
+            None,
+        ),
+    ),
+    PawsyncLogSensorEntityDescription(
+        key="last_eaten_time",
+        name="Last eaten time",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        icon="mdi:cat",
+        log_fn=lambda logs: next(
+            (datetime.fromtimestamp(e["timestamp"], tz=timezone.utc)
+             for e in logs if e["logType"] == "takeFood"),
+            None,
+        ),
+    ),
+    PawsyncLogSensorEntityDescription(
+        key="last_eaten_amount",
+        name="Last eaten amount",
+        native_unit_of_measurement=UnitOfMass.GRAMS,
+        state_class=SensorStateClass.MEASUREMENT,
+        icon="mdi:food-variant",
+        log_fn=lambda logs: next(
+            (e["value"] for e in logs
+             if e["logType"] == "takeFood" and e.get("value") is not None),
+            None,
+        ),
+    ),
+    PawsyncLogSensorEntityDescription(
+        key="last_eating_duration",
+        name="Last eating duration",
+        native_unit_of_measurement=UnitOfTime.SECONDS,
+        state_class=SensorStateClass.MEASUREMENT,
+        icon="mdi:timer",
+        log_fn=lambda logs: next(
+            (e["durationInS"] for e in logs
+             if e["logType"] == "takeFood" and e.get("durationInS", -1) > 0),
+            None,
+        ),
+    ),
+)
+
+
+# ── Pet profile sensors ────────────────────────────────────────────────────────
+
+@dataclass(frozen=True)
+class PawsyncPetSensorEntityDescription(SensorEntityDescription):
+    pet_fn: Callable[[dict], Any] | None = None
+
+
+PET_SENSOR_TYPES: tuple[PawsyncPetSensorEntityDescription, ...] = (
+    PawsyncPetSensorEntityDescription(
+        key="pet_weight",
+        name="Weight",
+        native_unit_of_measurement=UnitOfMass.GRAMS,
+        state_class=SensorStateClass.MEASUREMENT,
+        icon="mdi:scale-bathroom",
+        pet_fn=lambda p: p.get("weightInG"),
+    ),
+    PawsyncPetSensorEntityDescription(
+        key="today_food_intake",
+        name="Food intake today",
+        native_unit_of_measurement=UnitOfMass.GRAMS,
+        state_class=SensorStateClass.MEASUREMENT,
+        icon="mdi:bowl",
+        pet_fn=lambda p: p.get("todayFoodIntakeInG"),
+    ),
+    PawsyncPetSensorEntityDescription(
+        key="today_food_target",
+        name="Daily food target",
+        native_unit_of_measurement=UnitOfMass.GRAMS,
+        state_class=SensorStateClass.MEASUREMENT,
+        icon="mdi:target",
+        pet_fn=lambda p: p.get("targetFoodIntakeInG"),
+    ),
+    PawsyncPetSensorEntityDescription(
+        key="today_feeding_times",
+        name="Feedings today",
+        state_class=SensorStateClass.MEASUREMENT,
+        icon="mdi:counter",
+        pet_fn=lambda p: p.get("todayFoodIntakeTimes"),
+    ),
+)
+
+
+# ── Platform setup ─────────────────────────────────────────────────────────────
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -171,19 +293,47 @@ async def async_setup_entry(
     def _check_for_new() -> None:
         if not coordinator.data:
             return
-        new_entities = [
-            PawsyncDeviceSensor(coordinator, d, desc)
-            for d in coordinator.data
-            for desc in SENSOR_TYPES
-            if f"{d.deviceId}_{desc.key}" not in known_ids
-        ]
+        devices = coordinator.data["devices"]
+        pet_logs = coordinator.data["pet_logs"]
+        pets = coordinator.data["pets"]
+
+        new_entities: list = []
+
+        # Device property sensors
+        for d in devices:
+            for desc in SENSOR_TYPES:
+                key = f"{d.deviceId}_{desc.key}"
+                if key not in known_ids:
+                    new_entities.append(PawsyncDeviceSensor(coordinator, d, desc))
+                    known_ids.add(key)
+
+        # Pet log sensors
+        for d in devices:
+            logs = pet_logs.get(d.deviceId, [])
+            for desc in LOG_SENSOR_TYPES:
+                key = f"{d.deviceId}_{desc.key}"
+                if key not in known_ids:
+                    new_entities.append(PawsyncLogSensor(coordinator, d, desc, logs))
+                    known_ids.add(key)
+
+        # Pet profile sensors
+        for d in devices:
+            pet = pets.get(d.petId)
+            if pet:
+                for desc in PET_SENSOR_TYPES:
+                    key = f"{d.deviceId}_{desc.key}"
+                    if key not in known_ids:
+                        new_entities.append(PawsyncPetSensor(coordinator, d, desc, pet))
+                        known_ids.add(key)
+
         if new_entities:
-            known_ids.update(f"{e.device.deviceId}_{e.entity_description.key}" for e in new_entities)
             async_add_entities(new_entities)
 
     coordinator.async_add_listener(_check_for_new)
     _check_for_new()
 
+
+# ── Entity classes ─────────────────────────────────────────────────────────────
 
 class PawsyncDeviceSensor(CoordinatorEntity, SensorEntity):
 
@@ -227,7 +377,7 @@ class PawsyncDeviceSensor(CoordinatorEntity, SensorEntity):
 
     @callback
     def _handle_coordinator_update(self) -> None:
-        for d in self.coordinator.data or []:
+        for d in (self.coordinator.data or {}).get("devices", []):
             if d.deviceId == self.device.deviceId:
                 self.device = d
                 if self.entity_description.name is None:
@@ -258,4 +408,127 @@ class PawsyncDeviceSensor(CoordinatorEntity, SensorEntity):
             return None
         if self._attr_native_unit_of_measurement == UnitOfMass.OUNCES:
             return round(val * 0.035274, 2)
+        return val
+
+
+class PawsyncLogSensor(CoordinatorEntity, SensorEntity):
+
+    entity_description: PawsyncLogSensorEntityDescription
+
+    def __init__(self, coordinator, device: pawsync.Device, description: PawsyncLogSensorEntityDescription, logs: list):
+        super().__init__(coordinator)
+        self._device_id = device.deviceId
+        self._logs = logs
+        self.entity_description = description
+        self._attr_unique_id = f"pawsync_{device.deviceId}_{description.key}"
+        self._attr_name = f"{device.deviceName} {description.name}"
+        self._attr_extra_state_attributes = {"device_id": device.deviceId}
+
+        use_imperial = coordinator.config_entry.options.get(CONF_UNIT_SYSTEM, UNIT_IMPERIAL) == UNIT_IMPERIAL
+        if description.native_unit_of_measurement == UnitOfMass.GRAMS and use_imperial:
+            self._attr_native_unit_of_measurement = UnitOfMass.OUNCES
+        else:
+            self._attr_native_unit_of_measurement = description.native_unit_of_measurement
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        self._logs = (self.coordinator.data or {}).get("pet_logs", {}).get(self._device_id, [])
+        super()._handle_coordinator_update()
+
+    @property
+    def available(self) -> bool:
+        return self.coordinator.last_update_success
+
+    @property
+    def device_info(self):
+        devices = (self.coordinator.data or {}).get("devices", [])
+        d = next((d for d in devices if d.deviceId == self._device_id), None)
+        if d is None:
+            return None
+        return {
+            "identifiers": {(DOMAIN, d.deviceId)},
+            "name": d.deviceName,
+            "model": d.deviceModel,
+            "manufacturer": "Pawsync",
+            "hw_version": d.configModel,
+        }
+
+    @property
+    def native_value(self) -> Any:
+        if not self.entity_description.log_fn:
+            return None
+        val = self.entity_description.log_fn(self._logs)
+        if val is None:
+            return None
+        if self._attr_native_unit_of_measurement == UnitOfMass.OUNCES:
+            return round(val * 0.035274, 2)
+        return val
+
+
+class PawsyncPetSensor(CoordinatorEntity, SensorEntity):
+
+    entity_description: PawsyncPetSensorEntityDescription
+
+    def __init__(self, coordinator, device: pawsync.Device, description: PawsyncPetSensorEntityDescription, pet: dict):
+        super().__init__(coordinator)
+        self._device_id = device.deviceId
+        self._pet_id = device.petId
+        self._pet = pet
+        self.entity_description = description
+        self._attr_unique_id = f"pawsync_{device.deviceId}_{description.key}"
+        pet_name = pet.get("petName") or device.deviceName
+        self._attr_name = f"{pet_name} {description.name}"
+        self._attr_entity_picture = pet.get("petAvatarIcon")
+        self._attr_extra_state_attributes = {"device_id": device.deviceId, "pet_name": pet_name}
+
+        use_imperial = coordinator.config_entry.options.get(CONF_UNIT_SYSTEM, UNIT_IMPERIAL) == UNIT_IMPERIAL
+        if description.native_unit_of_measurement == UnitOfMass.GRAMS and use_imperial:
+            if description.key == "pet_weight":
+                self._attr_native_unit_of_measurement = UnitOfMass.POUNDS
+            else:
+                self._attr_native_unit_of_measurement = UnitOfMass.OUNCES
+        elif description.native_unit_of_measurement == UnitOfMass.GRAMS and not use_imperial:
+            if description.key == "pet_weight":
+                self._attr_native_unit_of_measurement = UnitOfMass.KILOGRAMS
+            else:
+                self._attr_native_unit_of_measurement = UnitOfMass.GRAMS
+        else:
+            self._attr_native_unit_of_measurement = description.native_unit_of_measurement
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        self._pet = (self.coordinator.data or {}).get("pets", {}).get(self._pet_id, self._pet)
+        super()._handle_coordinator_update()
+
+    @property
+    def available(self) -> bool:
+        return self.coordinator.last_update_success
+
+    @property
+    def device_info(self):
+        devices = (self.coordinator.data or {}).get("devices", [])
+        d = next((d for d in devices if d.deviceId == self._device_id), None)
+        if d is None:
+            return None
+        return {
+            "identifiers": {(DOMAIN, d.deviceId)},
+            "name": d.deviceName,
+            "model": d.deviceModel,
+            "manufacturer": "Pawsync",
+            "hw_version": d.configModel,
+        }
+
+    @property
+    def native_value(self) -> Any:
+        if not self.entity_description.pet_fn:
+            return None
+        val = self.entity_description.pet_fn(self._pet)
+        if val is None:
+            return None
+        if self._attr_native_unit_of_measurement == UnitOfMass.OUNCES:
+            return round(val * 0.035274, 2)
+        if self._attr_native_unit_of_measurement == UnitOfMass.POUNDS:
+            return round(val * 0.00220462, 2)
+        if self._attr_native_unit_of_measurement == UnitOfMass.KILOGRAMS:
+            return round(val / 1000, 2)
         return val
